@@ -2,15 +2,6 @@
 
 Small Spring Boot backend for the freecycling assignment. This version uses Spring Data JPA and keeps the project focused on the required users, transfer sites, time slots, items, interests, appointments, state transitions, and messages.
 
-## What Is Included
-
-- Java Spring Boot Maven project
-- Spring Web
-- Spring Data JPA
-- MySQL driver
-- No Lombok
-- No JWT/auth/images
-
 Main package:
 
 ```text
