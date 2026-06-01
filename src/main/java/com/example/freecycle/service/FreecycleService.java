@@ -27,6 +27,7 @@ import com.example.freecycle.repository.TransferSiteRepository;
 import com.example.freecycle.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class FreecycleService {
     private final ItemInterestRepository interestRepo;
     private final AppointmentRepository appointmentRepo;
     private final MessageRepository messageRepo;
+    private final PasswordEncoder passwordEncoder;
 
     public FreecycleService(
             UserRepository userRepo,
@@ -48,7 +50,8 @@ public class FreecycleService {
             ItemRepository itemRepo,
             ItemInterestRepository interestRepo,
             AppointmentRepository appointmentRepo,
-            MessageRepository messageRepo
+            MessageRepository messageRepo,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepo = userRepo;
         this.transferSiteRepo = transferSiteRepo;
@@ -57,12 +60,13 @@ public class FreecycleService {
         this.interestRepo = interestRepo;
         this.appointmentRepo = appointmentRepo;
         this.messageRepo = messageRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public User createUser(CreateUserRequest request) {
         User user = new User();
         user.setEmail(request.email());
-        user.setPasswordHash(request.password());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
         user.setPhoneNumber(request.phoneNumber());
@@ -70,8 +74,8 @@ public class FreecycleService {
         return userRepo.save(user);
     }
 
-    public Item createItem(CreateItemRequest request) {
-        User donor = getUser(request.donorId());
+    public Item createItem(Long donorId, CreateItemRequest request) {
+        User donor = getUser(donorId);
         Item item = new Item();
         item.setDonor(donor);
         item.setTitle(request.title());
@@ -84,12 +88,16 @@ public class FreecycleService {
         return itemRepo.save(item);
     }
 
-    public ItemInterest createInterest(Long itemId, CreateInterestRequest request) {
+    public Item createItem(CreateItemRequest request) {
+        return createItem(request.donorId(), request);
+    }
+
+    public ItemInterest createInterest(Long itemId, Long userId, CreateInterestRequest request) {
         Item item = getItem(itemId);
         if (item.getState() == ItemState.DONE) {
             throw new BadRequestException("Cannot express interest in an item that is done.");
         }
-        User user = getUser(request.userId());
+        User user = getUser(userId);
         if (item.getDonor().getId().equals(user.getId())) {
             throw new BadRequestException("Donor cannot express interest in their own item.");
         }
@@ -115,6 +123,10 @@ public class FreecycleService {
         return saved;
     }
 
+    public ItemInterest createInterest(Long itemId, CreateInterestRequest request) {
+        return createInterest(itemId, request.userId(), request);
+    }
+
     public TimeSlot createTimeSlot(CreateTimeSlotRequest request) {
         TransferSite site = transferSiteRepo.findById(request.transferSiteId())
                 .orElseThrow(() -> new NotFoundException("Transfer site not found."));
@@ -130,11 +142,15 @@ public class FreecycleService {
         return timeSlotRepo.save(slot);
     }
 
-    public Message createMessage(CreateMessageRequest request) {
+    public Message createMessage(Long senderId, CreateMessageRequest request) {
         Item item = request.itemId() == null ? null : getItem(request.itemId());
-        getUser(request.senderId());
+        getUser(senderId);
         getUser(request.recipientId());
-        return createMessage(request.senderId(), request.recipientId(), item, request.subject(), request.content());
+        return createMessage(senderId, request.recipientId(), item, request.subject(), request.content());
+    }
+
+    public Message createMessage(CreateMessageRequest request) {
+        return createMessage(request.senderId(), request);
     }
 
     @Transactional

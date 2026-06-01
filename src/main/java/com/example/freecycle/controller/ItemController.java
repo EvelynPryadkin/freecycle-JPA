@@ -5,9 +5,11 @@ import com.example.freecycle.entity.Item;
 import com.example.freecycle.entity.ItemState;
 import com.example.freecycle.exception.NotFoundException;
 import com.example.freecycle.repository.ItemRepository;
+import com.example.freecycle.security.FreecycleUserDetails;
 import com.example.freecycle.service.FreecycleService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,7 +43,9 @@ public class ItemController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Item create(@RequestBody CreateItemRequest request) {
-        return service.createItem(request);
+    public Item create(Authentication authentication, @RequestBody CreateItemRequest request) {
+        FreecycleUserDetails userDetails = (FreecycleUserDetails) authentication.getPrincipal();
+        Long userId = Long.parseLong(userDetails.getUsername());
+        return service.createItem(userId, request);
     }
 }
