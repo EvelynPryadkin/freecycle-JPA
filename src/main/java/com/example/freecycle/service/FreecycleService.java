@@ -17,6 +17,7 @@ import com.example.freecycle.entity.TimeSlot;
 import com.example.freecycle.entity.TransferSite;
 import com.example.freecycle.entity.User;
 import com.example.freecycle.exception.BadRequestException;
+import com.example.freecycle.exception.ForbiddenException;
 import com.example.freecycle.exception.NotFoundException;
 import com.example.freecycle.repository.AppointmentRepository;
 import com.example.freecycle.repository.ItemInterestRepository;
@@ -154,9 +155,21 @@ public class FreecycleService {
     }
 
     @Transactional
+    public Item selectRecipient(Long itemId, Long donorId, Long interestId) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        return selectRecipient(item, interestId);
+    }
+
+    @Transactional
     public Item selectRecipient(Long itemId, Long interestId) {
         Item item = getItem(itemId);
+        return selectRecipient(item, interestId);
+    }
+
+    private Item selectRecipient(Item item, Long interestId) {
         ItemInterest selectedInterest = getInterest(interestId);
+        Long itemId = item.getId();
         if (!selectedInterest.getItem().getId().equals(itemId)) {
             throw new BadRequestException("Interest does not belong to this item.");
         }
@@ -184,8 +197,20 @@ public class FreecycleService {
     }
 
     @Transactional
+    public Item deselectRecipient(Long itemId, Long donorId) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        return deselectRecipient(item);
+    }
+
+    @Transactional
     public Item deselectRecipient(Long itemId) {
         Item item = getItem(itemId);
+        return deselectRecipient(item);
+    }
+
+    private Item deselectRecipient(Item item) {
+        Long itemId = item.getId();
         ItemInterest selected = getSelectedInterestOrNull(itemId);
 
         appointmentRepo.deleteByItemId(itemId);
@@ -213,8 +238,20 @@ public class FreecycleService {
     }
 
     @Transactional
+    public Appointment schedule(Long itemId, Long donorId, ScheduleRequest request) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        return schedule(item, request);
+    }
+
+    @Transactional
     public Appointment schedule(Long itemId, ScheduleRequest request) {
         Item item = getItem(itemId);
+        return schedule(item, request);
+    }
+
+    private Appointment schedule(Item item, ScheduleRequest request) {
+        Long itemId = item.getId();
         ItemInterest selected = getSelectedInterest(itemId);
         TimeSlot timeSlot = timeSlotRepo.findById(request.timeSlotId())
                 .orElseThrow(() -> new NotFoundException("Time slot not found."));
@@ -245,8 +282,20 @@ public class FreecycleService {
     }
 
     @Transactional
+    public Item complete(Long itemId, Long donorId) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        return complete(item);
+    }
+
+    @Transactional
     public Item complete(Long itemId) {
         Item item = getItem(itemId);
+        return complete(item);
+    }
+
+    private Item complete(Item item) {
+        Long itemId = item.getId();
         ItemInterest selected = getSelectedInterestOrNull(itemId);
 
         appointmentRepo.deleteByItemId(itemId);
@@ -269,8 +318,20 @@ public class FreecycleService {
     }
 
     @Transactional
+    public Item deschedule(Long itemId, Long donorId) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        return deschedule(item);
+    }
+
+    @Transactional
     public Item deschedule(Long itemId) {
         Item item = getItem(itemId);
+        return deschedule(item);
+    }
+
+    private Item deschedule(Item item) {
+        Long itemId = item.getId();
         ItemInterest selected = getSelectedInterest(itemId);
 
         appointmentRepo.deleteByItemId(itemId);
@@ -289,8 +350,20 @@ public class FreecycleService {
     }
 
     @Transactional
+    public void cancelOffer(Long itemId, Long donorId) {
+        Item item = getItem(itemId);
+        requireDonor(item, donorId);
+        cancelOffer(item);
+    }
+
+    @Transactional
     public void cancelOffer(Long itemId) {
         Item item = getItem(itemId);
+        cancelOffer(item);
+    }
+
+    private void cancelOffer(Item item) {
+        Long itemId = item.getId();
         List<ItemInterest> interests = interestRepo.findByItemId(itemId);
         for (ItemInterest interest : interests) {
             createMessage(
@@ -359,6 +432,12 @@ public class FreecycleService {
 
     private ItemInterest getSelectedInterestOrNull(Long itemId) {
         return interestRepo.findByItemIdAndStatus(itemId, InterestStatus.SELECTED).orElse(null);
+    }
+
+    private void requireDonor(Item item, Long donorId) {
+        if (!item.getDonor().getId().equals(donorId)) {
+            throw new ForbiddenException("Only the donor can update this offer.");
+        }
     }
 
     private Message createMessage(Long senderId, Long recipientId, Item item, String subject, String content) {
