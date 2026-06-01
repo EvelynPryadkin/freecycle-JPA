@@ -4,9 +4,11 @@ import com.example.freecycle.dto.CreateMessageRequest;
 import com.example.freecycle.entity.Message;
 import com.example.freecycle.exception.NotFoundException;
 import com.example.freecycle.repository.MessageRepository;
+import com.example.freecycle.security.FreecycleUserDetails;
 import com.example.freecycle.service.FreecycleService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,8 +48,10 @@ public class MessageController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Message create(@RequestBody CreateMessageRequest request) {
-        return service.createMessage(request);
+    public Message create(Authentication authentication, @RequestBody CreateMessageRequest request) {
+        FreecycleUserDetails userDetails = (FreecycleUserDetails) authentication.getPrincipal();
+        Long senderId = Long.parseLong(userDetails.getUsername());
+        return service.createMessage(senderId, request);
     }
 
     @PostMapping("/{messageId}/read")

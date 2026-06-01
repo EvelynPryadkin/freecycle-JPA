@@ -3,9 +3,11 @@ package com.example.freecycle.controller;
 import com.example.freecycle.dto.CreateInterestRequest;
 import com.example.freecycle.entity.ItemInterest;
 import com.example.freecycle.repository.ItemInterestRepository;
+import com.example.freecycle.security.FreecycleUserDetails;
 import com.example.freecycle.service.FreecycleService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,8 +36,10 @@ public class InterestController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ItemInterest create(@PathVariable Long itemId, @RequestBody CreateInterestRequest request) {
-        return service.createInterest(itemId, request);
+    public ItemInterest create(Authentication authentication, @PathVariable Long itemId, @RequestBody CreateInterestRequest request) {
+        FreecycleUserDetails userDetails = (FreecycleUserDetails) authentication.getPrincipal();
+        Long userId = Long.parseLong(userDetails.getUsername());
+        return service.createInterest(itemId, userId, request);
     }
 
     @DeleteMapping("/{interestId}")
